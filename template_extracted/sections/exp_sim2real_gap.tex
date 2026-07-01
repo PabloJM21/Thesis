@@ -1,0 +1,213 @@
+\section{Establishing the Sim2Real Gap}
+\label{sec:gap}
+
+This section addresses \textbf{RQ1}. It quantifies the Sim2Real gap for runway
+keypoint detection, identifies which synthetic source generalizes best to real data
+overall and per weather scenario, and --- as a central methodological finding ---
+shows that a fair measurement of the gap requires controlling for an
+\emph{orientation} bias between the synthetic and real test sets, not only for runway
+size. The analysis proceeds from a first, counter-intuitive observation (the real set
+appears \emph{easier} than the synthetic sets) to its resolution and to a
+weather-stratified view that motivates the remainder of the thesis.
+
+\subsection{Experimental Design}
+\label{subsec:gap-design}
+Seven models are fine-tuned under the full budget (200 epochs, patience 25;
+\Cref{subsec:setup-protocol}): one per individual synthetic source (\texttt{flsim},
+\texttt{arcgis}, \texttt{bingmaps}, \texttt{ges}, \texttt{xplane}), the
+\texttt{combined}/\texttt{all} source, and the extended \texttt{all\_extended}
+variant. Each model is evaluated on the test set of every synthetic source and on the
+real LARD-V1 set (as a whole and per weather scenario). Since the sources share
+\texttt{location\_id}s (\Cref{subsec:setup-data}), the cross-source matrix isolates
+the rendering pipeline from the runway viewpoint.
+
+\subsection{Cross-Source Evaluation: A First, Counter-Intuitive Result}
+\label{subsec:gap-size}
+\Cref{tab:gap-size} reports the cross-source matrix when the test sets are matched on
+runway size only. Two patterns emerge. First, among the \emph{synthetic} test sets,
+each model performs best on its own source (the diagonal dominates), the expected
+signature of a domain effect. Second, and counter-intuitively, the \emph{real} test
+set yields the \emph{best} score for almost every training source --- e.g.\
+\texttt{ges} reaches $0.653$ on real versus $0.579$ on its own test set. Taken at face
+value this \emph{contradicts} the Sim2Real hypothesis, since the models generalize to
+real data better than to held-out synthetic data.
+
+\begin{table}[th]
+    \caption{Cross-source evaluation, mAP@[.50:.95], test sets matched on runway
+    \emph{size} only. Rows: training source; columns: evaluation test set. The real
+    column is the best or near-best entry in every row.}
+    \label{tab:gap-size}
+    \centering
+    \begin{NiceTabular}{lrrrrrr}
+        \CodeBefore
+        \rowcolors{2}{gray!10}{white}
+        \Body
+        \toprule
+        \textbf{Train \textbackslash{} Test} & \textbf{flsim} & \textbf{arcgis} & \textbf{bingmaps} & \textbf{ges} & \textbf{xplane} & \textbf{real} \\
+        \midrule
+        flsim    & 0.634 & 0.387 & 0.393 & 0.424 & 0.434 & 0.580 \\
+        arcgis   & 0.438 & 0.558 & 0.533 & 0.454 & 0.436 & 0.610 \\
+        bingmaps & 0.434 & 0.564 & 0.541 & 0.484 & 0.409 & 0.617 \\
+        ges      & 0.498 & 0.450 & 0.435 & 0.579 & 0.468 & 0.653 \\
+        xplane   & 0.400 & 0.389 & 0.402 & 0.417 & 0.520 & 0.555 \\
+        \bottomrule
+    \end{NiceTabular}
+\end{table}
+
+\subsection{Resolving the Contradiction: The Vertical-Angle Bias}
+\label{subsec:gap-orientation}
+Investigating the cause revealed a distribution mismatch that the size-only filtering
+does not remove: runways in the synthetic test sets frequently appear at oblique
+orientations, whereas the real approaches are mostly aligned vertically. Because
+off-axis runways are harder, the synthetic sets were effectively \emph{harder} than
+the real set, inflating the apparent real performance. Following the definition in
+\Cref{subsec:setup-filtering}, the test sets are re-filtered to match \emph{both} the
+runway-size and the vertical-angle distributions.
+
+\Cref{tab:gap-angle} reports the resulting matrix. After matching orientation, the
+real set is \emph{no longer} the best column: each model now generalizes best to its
+own synthetic source (e.g.\ \texttt{flsim} $0.673$ on itself versus $0.557$ on real;
+\texttt{ges} $0.644$ versus $0.638$ on real). This \emph{enables} the Sim2Real
+hypothesis --- the models do generalize worse to real data than to their training
+source. However, the differences are small, so this is best described as a
+\emph{modest} rather than a dramatic gap.
+
+\begin{table}[th]
+    \caption{Cross-source evaluation, mAP@[.50:.95], test sets matched on runway
+    \emph{size and vertical angle}. After controlling for orientation, the diagonal
+    (in-source) entry is the best in every row and the real column is no longer the
+    maximum.}
+    \label{tab:gap-angle}
+    \centering
+    \begin{NiceTabular}{lrrrrrr}
+        \CodeBefore
+        \rowcolors{2}{gray!10}{white}
+        \Body
+        \toprule
+        \textbf{Train \textbackslash{} Test} & \textbf{flsim} & \textbf{arcgis} & \textbf{bingmaps} & \textbf{ges} & \textbf{xplane} & \textbf{real} \\
+        \midrule
+        flsim    & 0.673 & 0.416 & 0.441 & 0.491 & 0.480 & 0.557 \\
+        arcgis   & 0.497 & 0.626 & 0.601 & 0.517 & 0.478 & 0.593 \\
+        bingmaps & 0.483 & 0.622 & 0.612 & 0.537 & 0.449 & 0.599 \\
+        ges      & 0.565 & 0.496 & 0.480 & 0.644 & 0.504 & 0.638 \\
+        xplane   & 0.432 & 0.450 & 0.467 & 0.471 & 0.557 & 0.543 \\
+        \bottomrule
+    \end{NiceTabular}
+\end{table}
+
+\subsection{Runway-Size (Distance) Analysis}
+\label{subsec:gap-distance}
+Breaking performance down by apparent runway size clarifies \emph{where} the gap
+lives. For a model trained on \texttt{flsim} and evaluated on its own source versus on
+real data, the two curves are nearly equal for small (distant) runways and diverge in
+favour of the synthetic source only for larger (nearer) runways. Adding the
+vertical-angle criterion shifts the cross-over point from a runway size of $-2.87$ to
+$-3.37$ (a difference of $0.5$ on the $\log_{10}$ scale) and shrinks the difference at
+larger runways: the gap thus becomes \emph{larger} and is felt at \emph{smaller}
+runways than before. For the very smallest runways, the real set still occasionally
+outperforms the synthetic source. The same pattern holds when other synthetic sources
+replace \texttt{flsim}.
+
+\plotslot{Runway-size vs.\ IoU, model trained on \texttt{flsim}, evaluated on
+\texttt{flsim} vs.\ real, before and after adding the vertical-angle filter
+(cross-over at $-2.87$ vs.\ $-3.37$).}
+
+\subsection{Why Synthetic Data Is Harder: Image-Quality Causes}
+\label{subsec:gap-quality}
+That sim-trained models generalize surprisingly well --- and sometimes better --- to
+real data than to their own synthetic source, especially relative to \emph{other}
+synthetic sources, points to a difference in \emph{image quality} rather than a small
+domain gap. The effect is most pronounced for distant runways and makes runway
+detection on synthetic data genuinely harder. Comparing synthetic and real images at
+matched runway size reveals three recurring causes:
+\begin{itemize}
+    \item \textbf{Runway/background separability.} On synthetic imagery, distant
+    runways are often hard to distinguish from their pixel surroundings, leading to
+    missed or poorly localized detections relative to equally distant real runways
+    (which are rendered/captured at higher effective resolution).
+    \item \textbf{Confusion with other instances.} Runways are frequently confused
+    with parallel taxiways/roads or with neighbouring runways. This happens on both
+    domains but appears more often on synthetic data.
+    \item \textbf{Edge sharpness.} Runway edges tend to be sharper in real images than
+    in synthetic ones, which yields higher precision and, almost always, a higher IoU.
+\end{itemize}
+A further, systematic error is independent of image quality: in \emph{near}
+perspectives the model consistently under-covers the runway threshold markings (the
+``piano keys''), predicting only the near portion of the quadrilateral. Other
+mismatches --- time of day, lighting contrast and runway appearance --- also
+contribute to isolated failures.
+
+\plotslot{Qualitative examples at matched runway size: synthetic vs.\ real, ground
+truth (green) and YOLOv8-pose prediction (blue), with per-image Prec/Rec/IoU
+(separability, instance confusion, edge sharpness).}
+
+\subsection{Weather-Stratified Analysis}
+\label{subsec:gap-weather}
+Splitting the (size- and angle-filtered) real set into weather scenarios shows that
+the overall real performance is carried by the dominant nominal split and hides a
+large spread across conditions. \Cref{tab:gap-weather} reports mAP@[.50:.95] per
+scenario. Three observations stand out:
+\begin{itemize}
+    \item \textbf{Performance depends strongly on the scenario}, and \emph{fog} is by
+    far the hardest ($\approx 0.21$--$0.32$ across sources).
+    \item \textbf{The best source is scenario-dependent.} The satellite-imagery
+    sources (\texttt{ges}, \texttt{arcgis}, \texttt{bingmaps}) are strongest under
+    \emph{glare} and \emph{nominal}, whereas the full 3D simulator \texttt{flsim} is
+    strongest under \emph{rain}, \emph{fog} and \emph{night}.
+    \item \textbf{The combined source generalizes best overall.} \texttt{all}/\texttt{all\_extended}
+    is best or near-best in almost every scenario (e.g.\ nominal $0.636$, night
+    $0.524$), confirming that \emph{rendering-source diversity outweighs
+    runway-viewpoint coverage} in this setup, even though \texttt{combined} covers
+    only about one fifth as many locations.
+\end{itemize}
+The good aggregate real performance is therefore largely attributable to the nominal
+split's dominance; the adverse splits reveal the domain shift that the remaining
+techniques target.
+
+\begin{table}[th]
+    \caption{Real test set per weather scenario, mAP@[.50:.95] (size- and
+    angle-filtered), by training source. \texttt{combined} = \texttt{all}. Fog is the
+    hardest scenario; the best source varies by scenario.}
+    \label{tab:gap-weather}
+    \centering
+    \begin{NiceTabular}{lrrrrr}
+        \CodeBefore
+        \rowcolors{2}{gray!10}{white}
+        \Body
+        \toprule
+        \textbf{Train source} & \textbf{Nominal} & \textbf{Glare} & \textbf{Rain} & \textbf{Fog} & \textbf{Night} \\
+        \midrule
+        flsim         & 0.533 & 0.443 & 0.596 & 0.315 & 0.376 \\
+        arcgis        & 0.586 & 0.507 & 0.400 & 0.224 & 0.268 \\
+        bingmaps      & 0.589 & 0.539 & 0.425 & 0.209 & 0.278 \\
+        ges           & 0.628 & 0.538 & 0.460 & 0.210 & 0.262 \\
+        xplane        & 0.533 & 0.450 & 0.286 & 0.221 & 0.282 \\
+        all           & 0.636 & 0.586 & 0.527 & 0.280 & 0.406 \\
+        all\_extended & 0.623 & 0.570 & 0.603 & 0.315 & 0.524 \\
+        \bottomrule
+    \end{NiceTabular}
+\end{table}
+
+To understand \emph{why} different sources suit different scenarios, the datasets are
+characterized in a style-oriented feature space, using (i) a small interpretable
+descriptor (brightness, contrast, saturation, sharpness as the variance of the
+Laplacian, edge density, colorfulness) and (ii) a texture descriptor given by the
+averaged Gram matrices of a VGG16 network pretrained on ImageNet-1k. A UMAP projection
+of these features separates the sources into clusters and places the real domain apart
+from all synthetic sources, confirming a genuine style gap and motivating the
+appearance-level interventions of \Cref{sec:weather-aug,sec:style-transfer}.
+
+\plotslot{UMAP of style-oriented image features (interpretable + VGG-Gram) for the
+five synthetic sources and the real domain, showing a distinct ``real'' cluster.}
+
+\subsection{Discussion}
+\label{subsec:gap-discussion}
+The gap is real but modest once orientation is controlled for, and the surprisingly
+strong real-domain performance is largely explained by higher real image quality
+rather than by the absence of a domain shift. Two takeaways are worth carrying
+forward. First, cross-domain comparisons for runway detection \emph{must} control for runway
+size \emph{and} orientation, or they will systematically flatter the real set.
+Second, the gap concentrates in adverse weather --- especially fog, rain and night ---
+and no single synthetic source dominates all scenarios, although the combined source
+comes closest. From here on, the techniques target \textbf{generalization to real
+adverse-weather conditions} when training on nominal-condition synthetic data.

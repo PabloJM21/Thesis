@@ -1,0 +1,119 @@
+\section{Related Work}
+\label{sec:related-work}
+
+This section positions the thesis against four strands of literature that map onto its
+research questions: runway detection and the LARD benchmark, learning from synthetic
+data and the Sim2Real gap, weather-robust augmentation, and domain adaptation via
+self-training and generative style transfer. For each strand we make explicit how the
+cited work relates to, and differs from, this thesis.
+
+\subsection{Vision-Based Runway Detection and the LARD Benchmark}
+\label{subsec:rw-runway}
+Runway detection for vision-based landing has been approached both as bounding-box
+detection and as geometry-aware localization. Runway-specific detectors such as
+YOLO-RWY~\cite{yolorwy2024} train a dedicated YOLOv8 detection architecture on LARD-V1,
+report performance on the real nominal and edge-case test splits, and introduce a
+\emph{data-augmentation module} spanning diverse weather conditions (rain, snow, fog,
+shadow, sun flare). Notably, the authors announce as future work the use of GANs for
+data augmentation and feature-enhancement modules to compensate for the limited night
+and adverse-weather data in LARD, as well as the extraction of runway
+\emph{keypoints} for pose estimation --- directions this thesis takes up directly.
+Beyond a single frame, landing-guidance systems combine detection with tracking and
+orientation estimation: Ferreira et al.~\cite{ferreira2025landing} track the runway and
+estimate aircraft orientation across an approach, and runway/airside safety systems use
+detection-plus-tracking video analytics for surveillance~\cite{runwaysurveillance2026}.
+
+The LARD benchmark~\cite{lard2023} provides both real and synthetic approach imagery
+annotated with runway corners. Its second iteration, LARD-V2~\cite{syntheticrunway2025},
+addresses two limitations of LARD-V1 --- an operational design domain (ODD) restricted
+to single-runway airports with an unrealistic approach cone, and few generation sources
+--- by narrowing the approach cone, extending to multi-runway airports, proposing an
+extended-ODD metric (e-mAP) that accounts for both in-ODD and extended-ODD runways, and
+expanding source diversity to improve cross-domain generalization. The authors benchmark
+YOLOv11 detectors with mAP and e-mAP, training eleven models that differ only in
+training-data composition (each individual source, the full dataset, and five
+leave-one-out sets). Their findings are directly relevant here: the \emph{full}
+configuration achieves the best average performance (every source contributes); the
+satellite-only sources ArcGIS and Bing Maps combine well with each other but less well
+with full 3D simulators; and \texttt{ges} attains the highest mAP among individual
+sources, likely because it blends satellite imagery with 3D rendering.
+
+\emph{Relation to this thesis.} Like YOLO-RWY, this thesis uses a lightweight YOLO
+detector, but formulates the task as four-corner \emph{pose} estimation and focuses on
+\emph{closing the Sim2Real gap} for a fixed detector rather than on architecture design.
+Whereas the LARD-V2 authors studied cross-\emph{dataset} generalization with a single
+detector on synthetic test sets, this thesis repeats the analysis against the
+\emph{real} LARD-V1 set, stratifies it into weather scenarios as weather-specific
+benchmarks (extended with private landing sequences to compensate for the sparse
+adverse-weather representation), and evaluates weather augmentation, self-training and
+style transfer as remedies. The strong YOLO benchmark and the object-detection findings,
+which the LARD-V2 authors relate to the datasets' rendering foundations, transfer
+naturally to the pose-estimation setting adopted here. Real-time detector alternatives
+such as RT-DETR~\cite{rtdetr2024} are noted as possible baselines but are outside the
+scope, which fixes the detector to isolate the adaptation strategy.
+
+\subsection{Learning from Synthetic Data and the Sim2Real Gap}
+\label{subsec:rw-sim2real}
+Synthetic imagery from simulators and geospatial renderers enables large, exactly
+labeled training sets, and domain randomization~\cite{tobin2017domainrand} broadens the
+training distribution to improve transfer. For runways specifically, LARD-V2 generates
+imagery from five pipelines (flight simulator, ArcGIS, Bing Maps, Google Earth Studio,
+X-Plane) and shows that mixing sources improves cross-domain
+generalization~\cite{syntheticrunway2025}. These works establish that synthetic data is
+viable but that a residual Sim2Real gap remains, especially away from nominal
+conditions.
+
+\emph{Relation to this thesis.} This thesis first \emph{quantifies} that residual gap
+in a controlled, shared-location cross-source comparison against the real domain
+(\Cref{sec:gap}). Its methodological contribution is to show that the gap is only
+measurable after controlling for a runway \emph{orientation} bias (vertical angle) in
+addition to runway size --- without which the real set spuriously appears easier than
+the synthetic sets.
+
+\subsection{Weather-Robust Augmentation}
+\label{subsec:rw-weather}
+Detector accuracy degrades markedly under rain, fog, glare and low light, and
+library-based augmentation such as \texttt{albumentations}~\cite{albumentations2020}
+provides fast, composable weather-like transformations; robustness studies quantify how
+much such degradations move detection metrics~\cite{weatherrobust2025}. Closest to this
+thesis, Rüter et al.~\cite{ruter2025augmentations} systematically investigate how
+individual image augmentations affect the sim-to-real generalization of perception
+models, reporting per-augmentation performance changes relative to a baseline and
+highlighting the combinatorial explosion of augmentation configurations.
+
+\emph{Relation to this thesis.} \Cref{sec:weather-aug} applies weather augmentations to
+the runway-pose task and, going beyond an on/off comparison, sweeps the augmentation
+\emph{ratio} per weather scenario, controls the dominant sampling variance by fixing the
+training set, and tests whether appearance augmentation can substitute for the diversity
+of a multi-source training set.
+
+\subsection{Self-Training, Pseudo-Labeling and Temporal Consistency}
+\label{subsec:rw-selftraining}
+Unsupervised domain adaptation aligns a model to an unlabeled target domain; classic
+approaches range from feature alignment by backpropagation~\cite{ganin2015dann} to
+self-training, where confident model predictions on target data serve as
+pseudo-labels~\cite{lee2013pseudolabel}, typically in a student--teacher setup combining
+pseudo-label and consistency objectives. In video, object trackers can propagate labels
+across frames to enforce temporal consistency and recover objects the per-frame detector
+misses~\cite{ferreira2025landing, runwaysurveillance2026, ostrack2022}.
+
+\emph{Relation to this thesis.} \Cref{sec:pseudo-labels} instantiates confidence-filtered
+self-training on unlabeled real landing sequences, compares thresholds, analyzes the
+pseudo-label composition across iterations, and extends the loop with a tracker
+(OSTrack) that propagates corner pseudo-labels forward and backward along a sequence to
+improve their completeness for distant runways.
+
+\subsection{Generative Style Transfer for Domain Adaptation}
+\label{subsec:rw-style}
+Image-to-image translation adapts source images to look like the target domain.
+CycleGAN~\cite{zhu2017cyclegan} popularized unpaired translation for Sim2Real, but its
+lack of explicit geometric constraints can hallucinate or displace structure and thus
+break keypoint labels. Conditional diffusion models with a control branch, such as the
+Cosmos platform~\cite{nvidia2025cosmos}, can be guided by the source structure (edge or
+segmentation maps, reference images, prompts) to repaint appearance while preserving
+scene geometry.
+
+\emph{Relation to this thesis.} \Cref{sec:style-transfer} uses control-guided,
+structure-preserving diffusion to import real and adverse-weather appearance onto the
+combined synthetic source \emph{while keeping the four-corner labels valid}, and
+optionally contrasts it with a CycleGAN baseline to quantify the label-displacement risk.

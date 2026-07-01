@@ -1,0 +1,30 @@
+Vision-based runway detection on approach is a promising, infrastructure-independent
+building block for assisted and autonomous landing, but training data that covers
+diverse airports, viewpoints and, above all, adverse weather is scarce. Synthetic
+data offers a scalable, automatically labeled alternative, yet models trained on it
+suffer a \emph{Sim2Real gap} when deployed on real imagery, especially under rain,
+glare, fog/snow and night conditions.
+
+This thesis studies and closes that gap for a YOLOv8-pose model that detects the four
+runway corners, fine-tuned on nominal-condition synthetic data from LARD-V2 and
+evaluated on a weather-stratified real test set from LARD-V1. It first quantifies the
+gap through a controlled, shared-location cross-evaluation of five synthetic rendering
+sources and a combined source, identifying which source generalizes best overall and
+per weather scenario, and isolating a runway orientation/distance bias that
+confounds naive real-versus-synthetic comparisons.
+
+It then evaluates three complementary techniques, ordered from the least to the most
+direct intervention on the domain shift: input-space weather augmentation with a
+ratio study; self-training with confidence-filtered pseudo-labels on unlabeled real
+landing sequences, extended with tracker-based temporal consistency; and
+label-preserving, diffusion-based style transfer (Cosmos Transfer~2.5), optionally
+compared against a CycleGAN baseline. All strategies are compared under one
+lightweight, reproducible protocol (a fine-tuned YOLOv8-pose model, a fixed
+5000-image budget, and a weather-stratified real test set), reporting primarily
+mAP@[.50:.95] together with IoU-based localization and inference speed.
+
+We find that the gap is only measurable once the test sets are matched on runway
+orientation as well as size, that it concentrates in adverse weather (fog being the
+hardest), and that self-training on unlabeled real footage is the most effective
+technique so far --- improving adverse-weather splits by over ten mAP points --- while
+weather augmentation helps only modestly and diffusion-based style transfer is ongoing.

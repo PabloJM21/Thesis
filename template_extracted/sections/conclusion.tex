@@ -1,0 +1,45 @@
+\section{Conclusion and Future Work}
+\label{sec:conclusion}
+
+\subsection{Summary}
+\label{subsec:concl-summary}
+This thesis studied the Sim2Real gap for vision-based runway detection with a
+YOLOv8-pose model fine-tuned on nominal-condition synthetic data from LARD-V2 and
+evaluated on a weather-stratified real test set from LARD-V1. Under a single,
+lightweight, reproducible protocol (fixed 5000-image budget, shared filtered test set,
+primary metric mAP@[.50:.95]), it first \emph{quantified} the gap and then compared
+three strategies to \emph{close} it.
+
+The headline findings are: (RQ1) once the test sets are matched on both runway size and
+\emph{vertical angle}, a modest but genuine Sim2Real gap appears --- previously hidden
+because the real set looked deceptively easy --- and much of the residual synthetic
+difficulty is an image-quality effect concentrated on distant runways; the combined
+source generalizes best overall, with different sources suiting different weather
+scenarios and fog the hardest. (RQ2) Weather augmentation gives limited and unstable
+gains, the scenario-matched augmentation is often not the best, and it does not
+substitute for source diversity. (RQ3) Self-training on unlabeled real landing sequences
+is the most effective technique so far, improving adverse LARD splits by over $10$ mAP
+and in-distribution sequences by up to $35$ mAP, though it is sensitive to pseudo-label
+noise. (RQ4) Control-guided diffusion style transfer, designed to import real appearance
+while preserving the corner labels, is ongoing.
+
+\subsection{Contributions Revisited}
+\label{subsec:concl-contrib}
+Against the LARD-V2 study, which analyzed cross-dataset generalization on synthetic test
+sets, this thesis contributes: a real-domain re-analysis of source suitability; a
+weather-stratified real benchmark extended with private landing sequences to compensate
+for sparse adverse-weather data; the vertical-angle filtering needed to measure the gap
+fairly; and a head-to-head comparison of weather augmentation, self-training and
+style transfer for lightweight runway-corner detection.
+
+\subsection{Future Work}
+\label{subsec:concl-future}
+Several threads remain open. The \textbf{tracker-augmented self-training} variant
+(\Cref{subsec:pl-tracker}) should be completed and compared against the confidence-only
+loop, quantifying the benefit of temporal consistency for distant runways. The
+\textbf{diffusion style-transfer} stage should be evaluated and, time permitting,
+contrasted with a CycleGAN baseline to measure both accuracy and label integrity.
+Beyond these, promising directions include \emph{combining} the techniques (e.g.\
+self-training on style-transferred data), extending the evaluation to full pose/geometry
+metrics, enlarging and balancing the adverse-weather real splits, and closing the
+far-runway fidelity gap identified in \Cref{subsec:gap-quality}.

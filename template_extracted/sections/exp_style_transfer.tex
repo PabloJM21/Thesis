@@ -1,0 +1,77 @@
+\section{Diffusion-Based Style Transfer}
+\label{sec:style-transfer}
+
+This section addresses \textbf{RQ4}: it targets the domain and Sim2Real gap by
+transferring concrete style components of the target domain onto the labeled synthetic
+source --- the \texttt{combined} dataset --- thereby injecting domain information. It
+is the most direct appearance-level intervention: rather than approximating weather
+with library effects (\Cref{sec:weather-aug}) or relying on the model's own
+predictions (\Cref{sec:pseudo-labels}), it repaints the source images to look like the
+target. This stage is \emph{planned/ongoing}.
+
+\subsection{Motivation and Label Preservation}
+\label{subsec:st-motivation}
+Style transfer imports stylistic properties of the real domain --- textures, colour
+contrasts --- and weather/time-of-day scenarios that either look different or are
+absent in the synthetic data. The style gap quantified in \Cref{subsec:gap-weather}
+(the distinct ``real'' cluster in the UMAP of style features) is precisely what this
+stage aims to close. The core constraint is \emph{label preservation}: the four runway
+corners must remain geometrically valid after restyling. CycleGAN-style unpaired
+translation can change texture and colour but is hard to control, and if the
+transformation displaces the four corners the synthetic labels become incorrect.
+
+\subsection{Method: Control-Guided Diffusion (Cosmos Transfer)}
+\label{subsec:st-method}
+Recent diffusion approaches use a \emph{control branch} that steers the diffusion
+process. This branch is an additional model that combines the source image with
+\emph{control modalities} such as text prompts, reference images or
+segmentation/edge maps. By conditioning generation on the source structure, the
+original labels are preserved far better than with GAN-based approaches. The thesis
+uses the open-source \textbf{Cosmos Transfer} diffusion model, conditioned on the
+structure of the \texttt{combined} synthetic images so that real and adverse-weather
+appearance is applied while the runway geometry --- and hence the 4-corner labels ---
+is retained. The restyled images are then used to fine-tune YOLOv8-pose under the full
+budget.
+\todo[inline]{Fix the exact Cosmos Transfer version and the control modality used
+(edge/segmentation/depth), the target styles/weather applied, prompt settings, and the
+number of restyled images.}
+
+\begin{table}[th]
+    \caption{Planned evaluation: control-guided diffusion style transfer applied to
+    \texttt{combined}, on the real test set per weather scenario, relative to the
+    \texttt{combined} baseline.}
+    \label{tab:st-results}
+    \centering
+    \begin{NiceTabular}{lrrrrrr}
+        \CodeBefore
+        \rowcolors{2}{gray!10}{white}
+        \Body
+        \toprule
+        \textbf{Configuration} & \textbf{Nominal} & \textbf{Glare} & \textbf{Rain} & \textbf{Fog} & \textbf{Night} & \textbf{Overall} \\
+        \midrule
+        combined (baseline)  & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
+        + Cosmos Transfer    & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
+        \bottomrule
+    \end{NiceTabular}
+\end{table}
+
+\plotslot{Style-transfer examples: synthetic source, edge/segmentation control map,
+and diffusion-restyled output with preserved runway geometry.}
+
+\subsection{Optional Comparison: CycleGAN Baseline}
+\label{subsec:st-cyclegan}
+Time permitting, the diffusion results are compared against a CycleGAN baseline that
+applies the same source$\rightarrow$target translation but may displace the corners.
+The comparison quantifies both the downstream accuracy and the label-integrity
+advantage of the control-guided diffusion approach (the corner displacement introduced
+by the translation itself).
+
+\subsection{Discussion}
+\label{subsec:st-discussion}
+Control-guided diffusion aims to combine the strengths of the earlier techniques: like
+augmentation it keeps labels exact and needs no target labels, and like self-training
+it grounds the adaptation in real target appearance --- while, unlike CycleGAN, it is
+steerable and structure-preserving. Its main costs are compute and the fidelity and
+controllability of the generative model. The cross-technique comparison in
+\Cref{sec:discussion} will place these results alongside weather augmentation and
+self-training once available.

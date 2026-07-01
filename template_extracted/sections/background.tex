@@ -1,0 +1,85 @@
+\section{Background}
+\label{sec:background}
+
+This section introduces the concepts needed to follow the thesis. It is deliberately
+scoped to what the later experiments rely on: runway detection as a pose task,
+the YOLO family, the vocabulary of the Sim2Real gap and domain adaptation, and the
+LARD datasets.
+
+\subsection{Vision-Based Runway Detection as Pose Estimation}
+\label{subsec:bg-runway}
+A runway projected into an approach image is well approximated by a planar
+quadrilateral. Detecting it can therefore be cast either as (i) bounding-box
+detection of the runway region, or (ii) localization of the four runway corners as
+\emph{keypoints}. This thesis adopts the keypoint (pose) formulation: the model
+predicts a runway instance together with its four ordered corner points
+(e.g.\ near-left, near-right, far-left, far-right). The four corners are a compact,
+geometry-preserving representation that downstream modules can turn into a relative
+pose estimate through a perspective-n-point solve. A key practical consequence,
+relevant throughout the thesis, is that any label-altering transformation of the
+image (geometric augmentation, generative restyling) must keep the four corner
+annotations geometrically consistent.
+
+\subsection{The YOLO Family and YOLOv8-Pose}
+\label{subsec:bg-yolo}
+\ac{YOLO} (You Only Look Once) is a family of single-stage object detectors that
+predict objects densely in a single forward pass, trading a small accuracy margin
+for high inference speed suitable for onboard, real-time use. YOLOv8 extends the
+family with an anchor-free, decoupled detection head and a dedicated
+\emph{pose} variant that adds a keypoint-regression branch, predicting a fixed number
+of keypoints per detected instance. For runway detection this branch is configured
+for four keypoints. All experiments in this thesis \emph{fine-tune} a
+pretrained YOLOv8-pose checkpoint rather than training from scratch, so that the
+comparisons isolate the effect of the training \emph{data} and adaptation
+technique rather than of the backbone initialization.
+
+\subsection{The Sim2Real Gap and Domain Shift}
+\label{subsec:bg-sim2real}
+When a model is trained on a source distribution $\mathcal{D}_S$ (synthetic
+imagery) and deployed on a target distribution $\mathcal{D}_T$ (real imagery),
+differences between the two distributions cause a drop in performance known as the
+\emph{Sim2Real gap}. It manifests as \emph{covariate shift} in low-level statistics
+(texture, color, sensor noise, compression), in mid-level appearance (lighting,
+shadows, atmospheric scattering) and in scene composition (which locations,
+viewpoints and object scales are represented). Adverse weather compounds the shift:
+rain streaks, water refraction on the lens, sun glare, fog/snow attenuation and
+night illumination are rarely modeled faithfully by nominal renderers and are
+under-represented in nominal synthetic data.
+
+\subsection{Families of Domain-Adaptation Techniques}
+\label{subsec:bg-da}
+The techniques studied in this thesis can be placed on a spectrum according to
+\emph{where} they intervene on the shift:
+\begin{itemize}
+    \item \textbf{Input-space augmentation.} Cheap, label-preserving transformations
+    applied to the source images to synthesize target-like nuisances (e.g.\ weather).
+    They do not require target data but only approximate real degradations.
+    \item \textbf{Self-training / pseudo-labeling.} A form of unsupervised domain
+    adaptation (\ac{UDA}) that uses model predictions on unlabeled target data as
+    training targets, optionally filtered by confidence and refined by temporal
+    consistency. It uses real data directly but is sensitive to confirmation bias.
+    \item \textbf{Generative style transfer.} Learns or applies a mapping that
+    imports target appearance onto the source images while preserving content, so
+    that labels remain valid. GAN-based mappings can distort geometry; diffusion-based
+    conditional transfer aims to keep structure intact.
+\end{itemize}
+\Cref{sec:gap,sec:weather-aug,sec:pseudo-labels,sec:style-transfer} explore these
+families in this order, from the least to the most direct intervention on the gap.
+
+\subsection{The LARD Datasets}
+\label{subsec:bg-lard}
+The \ac{LARD} dataset family targets runway detection on approach. The first
+version (LARD-V1) provides, among others, a set of \emph{real} approach images
+annotated with runway corners, which this thesis uses as the held-out real test set.
+The second version (LARD-V2) refines the operational design domain (a narrower
+approach cone, multi-runway airports) and, most importantly here, provides multiple
+\emph{synthetic} image sources for a shared set of runway locations, generated through
+different rendering and imagery pipelines. This thesis uses five such sources ---
+\texttt{flsim} (Flight Simulator) and \texttt{xplane} (X-Plane), which are full 3D
+simulators; \texttt{arcgis} and \texttt{bingmaps}, which are satellite-imagery based;
+and \texttt{ges} (Google Earth Studio), which blends satellite imagery with 3D
+rendering --- plus a \emph{combined} source that mixes all five. Because the sources
+share \texttt{location\_id}s, images from different sources correspond to the exact
+same runway views, which is what makes the cross-source comparison in \Cref{sec:gap} a
+controlled experiment. The precise composition and the sampling scheme used to keep the
+training size fixed are detailed in \Cref{sec:setup}.

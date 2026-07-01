@@ -1,0 +1,80 @@
+\section{Discussion}
+\label{sec:discussion}
+
+This section draws the experiments together and compares the techniques as answers to a
+single question: how best to close the Sim2Real gap for runway keypoint detection under
+adverse weather when training on nominal synthetic data.
+
+\subsection{Comparing the Techniques}
+\label{subsec:disc-compare}
+The three intervention families differ sharply in effectiveness on this task.
+\emph{Weather augmentation} (\Cref{sec:weather-aug}) is cheap and label-preserving but
+delivers only limited, unstable gains: the scenario-matched augmentation is often not
+the best, the useful ratio is condition-specific (e.g.\ water refraction $+10$ mAP on
+the \texttt{ges} rain split at ratio $0.75$, but glare augmentation dropping $>10$ mAP
+on the fog split from $0.45$ to $0.75$), and it does not recover the advantage of
+source diversity. \emph{Self-training} (\Cref{sec:pseudo-labels}) is markedly stronger:
+using unlabeled real footage it improves the adverse LARD splits by more than $10$ mAP
+and the in-distribution landing sequences by up to $35$ mAP, with the confidence
+threshold nearly neutral on LARD. \emph{Style transfer} (\Cref{sec:style-transfer})
+is expected to complement these but is still ongoing. \Cref{tab:disc-summary}
+consolidates the best configuration of each available technique against the
+\texttt{combined} baseline.
+
+\begin{table}[th]
+    \caption{Best configuration of each technique vs.\ the \texttt{combined} baseline,
+    real test set per weather scenario and overall (mAP@[.50:.95]). Style transfer is
+    pending.}
+    \label{tab:disc-summary}
+    \centering
+    \begin{NiceTabular}{lrrrrrr}
+        \CodeBefore
+        \rowcolors{2}{gray!10}{white}
+        \Body
+        \toprule
+        \textbf{Technique} & \textbf{Nominal} & \textbf{Glare} & \textbf{Rain} & \textbf{Fog} & \textbf{Night} & \textbf{Overall} \\
+        \midrule
+        combined (baseline)            & 0.636 & 0.586 & 0.527 & 0.280 & 0.406 & \tbd \\
+        + Weather augmentation (best)  & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
+        + Self-training (best)         & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
+        + Style transfer (Cosmos)      & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
+        \bottomrule
+    \end{NiceTabular}
+\end{table}
+\todo[inline]{Fill the best-configuration rows once the augmentation, self-training and
+style-transfer runs are consolidated on a common (size+angle-filtered) real test set.}
+
+\subsection{The Gap Is Real but Modest, and Partly a Quality Effect}
+\label{subsec:disc-gap}
+A recurring theme is that the raw real-versus-synthetic comparison is misleading. Only
+after matching both runway size and vertical angle does the expected ordering appear
+(each model best on its own source; real no longer the easiest set), and even then the
+gap is modest. Much of the synthetic difficulty is an \emph{image-quality} effect ---
+poor runway/background separability, confusion with parallel structures, and softer
+edges on synthetic data --- most pronounced for distant runways. The practical
+consequence is that cross-domain evaluations for this task must control for size and
+orientation, or they will systematically flatter the real set.
+
+\subsection{Dataset Diversity vs.\ Viewpoint Coverage}
+\label{subsec:disc-diversity}
+The \texttt{combined} source outperforms every individual source on real data despite
+covering roughly one fifth as many locations, indicating that \emph{rendering-source
+diversity outweighs runway-viewpoint coverage} in this setup. Consistent with the
+LARD-V2 benchmark, no single source wins everywhere: satellite sources
+(\texttt{ges}, \texttt{arcgis}, \texttt{bingmaps}) lead under glare and nominal, while
+the 3D simulator \texttt{flsim} leads under rain, fog and night. The
+augmentation study confirms the same lesson from the other direction: appearance
+augmentation of a single source does not reach the diverse combined baseline.
+
+\subsection{Limitations}
+\label{subsec:disc-limitations}
+Several limitations qualify these results. The weather-augmentation sweep uses a reduced
+20-epoch budget and, even with a fixed training set, four runs do not fully average out
+the sampling variance; larger effects are trustworthy, small ones less so. The
+weather-stratified real splits --- especially fog and night --- are small, so
+per-scenario numbers are noisier than the nominal figure. Self-training is exposed to
+confirmation bias, as the rain pseudo-label composition shows (quantity $\neq$ quality),
+and its largest gains are on in-distribution custom sequences rather than on the
+independent LARD set. Finally, the style-transfer stage and the tracker-augmented
+self-training variant are still ongoing, so the cross-technique comparison in
+\Cref{tab:disc-summary} is not yet complete.

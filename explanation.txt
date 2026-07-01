@@ -1,0 +1,615 @@
+inking completed
++
+Clean build with no warnings, 28 pages. Let me tidy the build artifacts (keeping the PDF for review):
+
+Command
+/home/ub…xtracted
+
+rm -f *.aux *.bcf *.blg *.lof *.lot *.lol *.out *.run.xml *.toc *.xmpdata main.bbl main.log 2>/dev/null; rm -rf _minted-main 2>/dev/null; ls -la
+total 384
+drwxrwxr-x 5 ubuntu ubuntu   4096 Jul  1 16:15 .
+drwxrwxr-x 5 ubuntu ubuntu   4096 Jul  1 15:42 ..
+-rw-r--r-- 1 ubuntu ubuntu  18433 May 27 09:34 LICENSE
+-rw-r--r-- 1 ubuntu ubuntu    707 May 27 09:34 Makefile
+-rw-r--r-- 1 ubuntu ubuntu   2192 May 27 09:34 README.md
+-rw-r--r-- 1 ubuntu ubuntu    426 Jul  1 16:14 abbreviations.tex
+-rw-r--r-- 1 ubuntu ubuntu   1579 Jul  1 15:57 abstract.tex
+-rw-r--r-- 1 ubuntu ubuntu   1212 May 27 09:34 ai-declaration.tex
+-rw-r--r-- 1 ubuntu ubuntu    491 Jul  1 15:57 appendix.tex
+drwxrwxr-x 2 ubuntu ubuntu   4096 Jul  1 15:42 assets
+-rw-r--r-- 1 ubuntu ubuntu    469 May 27 09:34 contact.tex
+-rw-r--r-- 1 ubuntu ubuntu   1219 Jul  1 15:43 content.tex
+drwxrwxr-x 2 ubuntu ubuntu   4096 Jul  1 15:42 figures
+-rw-rw-r-- 1 ubuntu ubuntu 290132 Jul  1 16:15 main.pdf
+-rw-r--r-- 1 ubuntu ubuntu   4830 Jul  1 16:07 main.tex
+-rw-rw-r-- 1 ubuntu ubuntu   5763 Jul  1 16:15 pdfa.xmpi
+-rw-r--r-- 1 ubuntu ubuntu   5221 Jul  1 15:58 ref.bib
+drwxrwxr-x 2 ubuntu ubuntu   4096 Jul  1 16:08 sections
+-rw-r--r-- 1 ubuntu ubuntu    844 May 27 09:34 titlepage.tex
+Command
+/home/ub…xtracted
+
+rm -f pdfa.xmpi; echo cleaned
+cleaned
+The thesis structure is complete and compiles cleanly (28 pages, PDF/A, bibliography resolved, zero undefined references). Here's what I built on top of your Göttingen template.
+
+What changed
+I configured main.tex (title, Master's Thesis, keywords) and split the content into modular files under sections/, wired together from content.tex. Each experiment is its own file so you can work on them independently.
+
+Structure and logical thread
+The thesis follows one narrative: measure the gap, then attack it with progressively more direct interventions.
+
+Introduction — motivation (vision-based landing), problem (Sim2Real gap + adverse weather), four research questions (RQ1–RQ4), contributions, outline.
+Background — runway detection as 4-corner pose, YOLOv8-pose, Sim2Real/domain-shift vocabulary, and a domain-adaptation spectrum (augmentation → self-training → style transfer) that frames the whole document.
+Related Work — five stubs with real starter citations and \todo prompts.
+Experimental Setup — centralizes all your shared details: the 5 sources + combined, shared location_ids, the 5000-image budget, the diversity-vs-coverage trade-off (1/5 locations), the ~1800-image weather-split test set, full budget (200 epochs / patience 25) vs reduced (20 epochs), and the 4-runs-for-variance protocol.
+Establishing the Sim2Real Gap (RQ1) — cross-source matrix + per-weather table; carries ges (best individual) and combined (best overall) forward. Your orientation/distance finding is written as an explicit parallel observation subsection, not the main thread.
+Weather Augmentations (RQ2) — albumentations (rain, water refraction, glare, fog, night) on ges and combined, ratio sweep, and the three sub-questions including "does augmentation substitute for diversity."
+Self-Training with Pseudo-Labels (RQ3) — the exact 5-step loop, τ ∈ {0.65, 0.8}, plus the tracker-augmented temporal variant framed as tracker distillation.
+Diffusion Style Transfer (RQ4) — Cosmos Transfer 2.5 with label-preservation motivation and the optional CycleGAN comparison.
+Discussion — cross-technique summary table + diversity-vs-coverage synthesis + limitations.
+Conclusion and Future Work.
+Practical notes
+Result cells use a clean \tbd (--) marker; guidance for you to fill lives in margin \todo[inline] notes. Search \todo and \tbd to find everything that needs your numbers.
+Abbreviations, abstract, and starter ref.bib entries (LARD, YOLOv8, albumentations, domain randomization, pseudo-label, CycleGAN, Cosmos) are wired in — verify the bib fields before relying on them.
+Everything lives in template_extracted/; main.pdf is there so you can preview the layout.
+One thing worth flagging: the combined claim that "dataset diversity outperforms runway perspective coverage" is currently stated as a finding in the setup and discussion. Since it's a key conclusion, make sure the RQ1 tables back it up numerically before leaning on it in the abstract.
+
+Want me to repackage this into a zip for Overleaf, or draft actual related-work prose for any of the five subsections?
+
+Est. Credits Used: 8.61
+Elapsed time: 10m 45s
+
+
+Checkpoint
+Restore
+Now extend the introduction, the realted work and some sections with this research proposal and feedback.
+
+You should only consider the feedback concerning the related work and the motivation of the research questions, and also the considered metrics (mainly mAP50:95 and sometimes IoU)
+
+Also consider these references:
+
+Weather augmentation modules
+
+YOLO-RWY (runway-specific detector)
+
+
+
+Domain adaptation
+
+ 
+
+Synthetic Data for Robust Runway Detection (2025)
+
+
+
+Combination of many
+
+Real-time runway safety surveillance using deep learning based video analytics 
+
+ 
+
+Runway detection and tracking
+
+ 
+
+"Vision-Based Landing Guidance through Tracking and Orientation Estimation" 
+
+
+
+
+
+
+
+
+
+
+
+
+
+Here is the research proposal with the feedback. You shouldn't improve the proposal, just take elements to write the thesis and the feedback parts I specified:
+
+Peer Feedback on Research Proposal 
+
+Overall, I think this is a strong and interesting proposal. The topic is clearly relevant, and the motivation for using synthetic data, semi-supervised domain adaptation, and diffusion-based style transfer is understandable. The proposal also has a good structure and the work plan seems well thought out. However, I think some sections could be made clearer and more thesis-specific. 
+
+Introduction 
+
+The introduction gives a good first overview of the problem, especially the limited availability of annotated real-world runway data and the Sim2Real gap. However, I felt that the beginning is still a bit broad and could provide more task-specific background. It might help to start more naturally from the aviation/ runway-detection setting: for example, why runway detection from an aircraft perspective is difficult, how weather, illumination, distance, runway perspective, and camera viewpoint affect the task, and why real annotated data is hard to obtain. 
+
+The related work is mentioned, but I think the connection between the cited approaches and this specific thesis could be explained more clearly. In particular, I did not fully understand how diffusion models and CycleGAN-style methods would be applied in this project. A short explanation of how style transfer would change the synthetic images while preserving the runway labels would make this part easier to follow. 
+
+Goal of the Thesis 
+
+The overall goal is understandable, but I think one sharper sentence would help a lot. For example: 
+
+“The goal of this thesis is to evaluate which Sim2Real strategy best improves lightweight runway-corner detection from aircraft-view images when only limited annotated real data is available.” 
+
+This would make the research goal immediately clear before going into the details of the different approaches. 
+
+The research gap is also present: previous work often focuses either on synthetic data, foundation models, or domain adaptation separately, while this thesis compares several Sim2Real strategies under a lightweight and reproducible setup. This is a good contribution, but it could be stated more explicitly. 
+
+Research Objectives 
+
+The research objectives are generally clear, but their presentation is sometimes a bit confusing because some of them read more like methodology steps than research questions. I would suggest separating the actual research questions from the planned methods. For example, first state the question, then explain which experiment will answer it. 
+
+1
+
+It would also be useful to clarify whether the YOLO-pose model will be trained from scratch or fine-tuned from an existing checkpoint. This is important because it affects reproducibility, training time, and the interpretation of the results. 
+
+Since the proposal focuses on lightweight and edge-deployable models, it might also be worth briefly justifying why YOLO-pose is the main choice. Maybe other real-time detector families, such as RF-DETR or RT-DETR-style models, could be mentioned as possible alternatives or baselines, even if they are not the main focus. This would make the model choice feel more deliberate. 
+
+Expected Results and Contributions 
+
+The expected results are understandable, especially the expectation that the baseline will show a Sim2Real gap and that domain adaptation or diffusion-based style transfer may improve performance. However, the expected results are not yet very quantitatively meaningful. 
+
+I would suggest adding clearer evaluation targets or at least naming the main metrics. For example, will the main metric be mAP, mIoU, keypoint error, OKS, inference speed, or a combination of these? Since the task is runway corner detection, it would be helpful to explain which metric best reflects successful runway detection in practice. 
+
+It would also help to specify what would count as a meaningful improvement. For example, is an improvement of 2–3 mAP points already useful, or is the expectation a larger gain over the synthetic-only baseline? Even rough quantitative expectations would make the expected contribution stronger. 
+
+Methodology 
+
+The methodology is one of the stronger parts of the proposal. The work packages are clearly listed, and the stages follow a logical order: dataset filtering, baseline training, semi-supervised domain adaptation, diffusion style transfer, and final comparison. 
+
+However, some parts could still be clarified. For example, the pseudo-labeling process should explain how “high-confidence” pseudo-labels are selected and what threshold or filtering strategy will be used. Similarly, for the diffusion stage, it would be useful to explain how the method will ensure that the runway geometry and corner labels remain valid after style transfer. 
+
+The evaluation plan is good because it proposes comparing models across synthetic subsets and a real world test set. Still, the proposal should more clearly state how the final comparison will be performed and which metrics will decide the best model. 
+
+Work Plan and Feasibility 
+
+The work plan is good and gives a realistic overview of the main tasks. The stages are concrete, and the buffer at the end is a good idea. However, the proposal might benefit from a short risk-management note. For example, diffusion model setup, YouTube frame filtering, and iterative self-training could take longer than expected. It would be useful to mention what the minimum viable thesis outcome would be if one of the more complex stages takes too much time. 
+
+2
+
+Final Suggestions My main suggestions are: 
+
+1.  
+
+Make the introduction more task-specific and move from the aviation/runway problem to the 
+
+technical Sim2Real methods. 
+
+2.  
+
+Add one clear sentence stating the thesis goal. 
+
+3.  
+
+Separate research questions from methodology steps. 4.  
+
+Clarify whether YOLO-pose is trained from scratch or fine-tuned. 
+
+5.  
+
+Explain more clearly how diffusion/style transfer preserves labels. 6.  
+
+Add quantitative evaluation metrics such as mAP, mIoU, OKS, keypoint error, and inference speed. 
+
+7.  
+
+Mention what counts as a meaningful improvement over the baseline. 8.  
+
+Add a short feasibility/risk note for the more complex work packages. 
+
+Overall, the proposal is promising and the work plan is solid. With a clearer framing of the research goal, more precise research questions, and stronger quantitative evaluation criteria, the proposal would become much easier to understand and evaluate. 
+
+3
+
+
+
+Kiro
+Thinking completed
++
+I'll incorporate the proposal content and the three feedback areas (related work, RQ motivation, metrics). First let me look up accurate citations for the references you listed.
+
+
+Web search: YOLO-RWY runway detection model synthetic data paper
+10 results
+Thinking completed
++
+
+Web search: "YOLO-RWY" runway detection edge deployment robust dataset augmentation
+10 results
+Thinking completed
++
+Fetched: https://www.mdpi.com/2504-446X/8/10/571
+57 B • 1.67s
+
+Web search: Vision-Based Landing Guidance through Tracking and Orientation Estimation runway
+10 results
+Thinking completed
++
+
+Web search: Real-time runway safety surveillance using deep learning based video analytics
+10 results
+Thinking completed
++
+
+Web search: weather data augmentation module rain fog adverse conditions object detection robustness
+10 results
+Thinking completed
++
+Let me verify the YOLO-RWY paper details before citing:
+
+Fetched: https://arxiv.org/abs/2410.15757
+60 B • 201ms
+
+Web search: "YOLO-RWY" runway detection Drones MDPI 2024 EGE-UAV loss
+10 results
+Thinking completed
++
+I have accurate citations now. Let me add them to the bibliography:
+
+User accepted edits to
+
+ref.bib
+
+
+Thinking completed
++
+Now let me rewrite the introduction to be task-specific (aviation-first), add the sharp goal sentence, and explain label-preserving style transfer. Let me update the motivation subsection:
+
+User accepted edits to
+
+introduction.tex
+
+
+Now update the problem statement to add the sharp thesis-goal sentence and the label-preserving style-transfer explanation:
+
+User accepted edits to
+
+introduction.tex
+
+
+Thinking completed
++
+Now let me strengthen the research-questions framing to motivate each RQ and keep questions separate from methods:
+
+User accepted edits to
+
+introduction.tex
+
+
+Thinking completed
++
+Now let me expand the related work with real prose connecting each cited approach to this thesis:
+
+User accepted edits to
+
+related_work.tex
+
+
+Thinking completed
++
+Now update the metrics section per the feedback (primary mAP@[.50:.95], IoU sometimes, meaningful-improvement threshold, inference speed):
+
+User accepted edits to
+
+setup.tex
+
+
+Thinking completed
++
+Add the IoU acronym to the abbreviations list:
+
+User accepted edits to
+
+abbreviations.tex
+
+
+Thinking completed
++
+Let me name the primary metric explicitly in the key result-table captions:
+
+User accepted edits to
+
+exp_sim2real_gap.tex
+
+
+Thinking completed
++
+Let me add the primary metric to the abstract's evaluation framing:
+
+User accepted edits to
+
+abstract.tex
+
+
+Now let me rebuild to confirm everything still compiles cleanly with the new citations and acronyms:
+
+Command
+/home/ub…xtracted
+
+pdflatex -shell-escape -interaction=nonstopmode main >/tmp/b1.log 2>&1; echo "p1:$?"; biber main >/tmp/bib.log 2>&1; echo "biber:$?"; pdflatex -shell-escape -interaction=nonstopmode main >/tmp/b2.log 2>&1; echo "p2:$?"; pdflatex -shell-escape -interaction=nonstopmode main >/tmp/b3.log 2>&1; echo "p3:$?"; grep "Output written" /tmp/b3.log
+p1:0
+biber:0
+p2:0
+p3:0
+Output written on main.pdf (30 pages, 311171 bytes).
+Command
+/home/ub…xtracted
+
+grep -iE "undefined|Citation.*undefined|multiply defined" /tmp/b3.log | grep -vi hyperref; echo "--- biber warnings ---"; grep -iE "WARN|ERROR" /tmp/bib.log | head; echo "done"
+--- biber warnings ---
+done
+Thinking completed
++
+Clean build: 30 pages, no undefined references, no citation warnings, no biber warnings. Let me tidy the artifacts:
+
+Command
+/home/ub…xtracted
+
+rm -f *.aux *.bcf *.blg *.lof *.lot *.lol *.out *.run.xml *.toc *.xmpdata main.bbl main.log pdfa.xmpi 2>/dev/null; rm -rf _minted-main 2>/dev/null; echo cleaned
+cleaned
+I've extended the thesis with the proposal content and the three feedback areas you scoped (related work, RQ motivation, metrics). It compiles cleanly (30 pages, no undefined references or citation warnings).
+
+Introduction (task-specific, aviation-first)
+Rewrote the motivation to start from the landing problem itself: why approach/landing is accident-prone, why a camera is an attractive infrastructure-independent alternative, and why runway detection from the aircraft view is hard, walking through apparent size/distance, orientation/perspective, camera viewpoint, and weather/illumination. It then transitions naturally into data scarcity and the synthetic-data solution, and only afterward into the Sim2Real methods. Added three new framing paragraphs:
+
+Goal of the thesis — the sharp one-sentence goal you'd expect ("evaluate which Sim2Real strategy best improves lightweight runway-corner detection ... when only limited annotated real data is available"), plus the lightweight/reproducible-setup framing.
+Research gap — states explicitly that prior work treats synthetic data, detector design, augmentation, and domain adaptation separately, whereas this thesis compares strategies head-to-head under one protocol.
+Label-preserving style transfer — explains how conditional diffusion repaints appearance while keeping runway geometry/labels intact, and why CycleGAN risks displacing corners.
+Each research question now carries a short motivation clause tied to the literature, and I added a lead-in stating that questions are kept separate from the methods that answer them.
+
+Related Work
+Replaced the stubs with real prose, each subsection ending in an explicit "Relation to this thesis" note. Integrated your references: YOLO-RWY, Ferreira et al. (WACV 2025 tracking/orientation), the runway safety surveillance/DeepSORT paper, Synthetic Data for Robust Runway Detection (2025), domain adaptation (DANN), weather-robustness, plus a brief mention of RT-DETR as an alternative detector.
+
+Metrics
+Reworked the evaluation section: mAP@[.50:.95] is the primary metric, mAP@0.50 as a looser reference, IoU reported directly where a single localization figure is clearer (e.g., distant runways), plus OKS/per-corner error and inference speed for the edge-deployment angle. Added a "what counts as a meaningful improvement" paragraph tied to the 4-run variance protocol. Named the metric in the key table captions and the abstract, and added the IoU acronym.
+
+I only pulled the feedback items you specified. Two things I deliberately left out of scope, since they fall under the feedback categories you excluded: the from-scratch-vs-fine-tune justification and the feasibility/risk note (the fine-tuning choice is already stated in the setup; RT-DETR appears only as a related-work aside). Say the word if you want either added.
+
+One caution: a few bib entries (Synthetic Data for Robust Runway Detection, the surveillance paper, and the WACV author list) have placeholder author fields I couldn't fully verify from the search snippets — worth confirming against the actual PDFs before submission.
+
+Est. Credits Used: 14.74
+Elapsed time: 16m 32s
+
+
+Checkpoint
+Restore
+Perfect. No wintegrate the current presentation I have of findings and plots. These are related to different sections and chapters of the thesis you created, yo locate them carefully. 
+
+Finally, draw additional conclusions, and review the entire text of the thesis to match the style and vocavulary of the research proposal I showed you and the peer feedback (as much as possible).
+
+The stages of self-training with the tracker extensions and further are still in progress, so it's fine if they're not closed yet.
+
+Kiro
+Thinking completed
++
+This is a rich set of concrete results. Let me integrate them into the right sections, add the real numbers/tables, place figure slots for the plots, draw additional conclusions, and align the vocabulary with your proposal. Let me start by re-reading my current section files to edit precisely.
+
+Read file(s)
+
+setup.tex
+
+introduction.tex
+Thinking completed
++
+Now let me add the Rüter et al. augmentation reference cited in the presentation:
+
+User accepted edits to
+
+ref.bib
+14
+
+
+Thinking completed
++
+I'll add a visible plot-placeholder command to the preamble so the figures from your slides have clearly marked slots:
+
+User accepted edits to
+
+main.tex
+6
+
+
+Now the setup section with concrete dataset numbers, the vertical-angle filtering, weather splits, unlabeled data, and style-feature analysis:
+
+User accepted edits to
+
+setup.tex
+113
+76
+
+
+Thinking completed
++
+Now the core Experiment 1 section, integrating the cross-source matrices, the vertical-angle discovery, the distance analyses, the image-quality causes, and the weather-stratified findings:
+
+User accepted edits to
+
+exp_sim2real_gap.tex
+164
+88
+
+
+Thinking completed
++
+User accepted edits to
+
+exp_sim2real_gap.tex
+2
+2
+
+
+Now the weather-augmentation section with the concrete methodology and findings (variance, fixed dataset, max-over-runs, ratios, refraction/glare effects):
+
+User accepted edits to
+
+exp_weather_augmentation.tex
+100
+61
+
+
+Thinking completed
++
+Now the self-training section, integrating the 4-iteration process, both thresholds, the LARD vs custom test-set results, the pseudo-label composition analysis, and the in-progress tracker extension:
+
+User accepted edits to
+
+exp_pseudo_labels.tex
+116
+77
+
+
+Thinking completed
++
+Now refine the style-transfer section with the control-branch/control-modalities framing from your slides, marking it as planned/ongoing:
+
+User accepted edits to
+
+exp_style_transfer.tex
+49
+36
+
+
+Thinking completed
++
+Now let me expand the related work with the LARD-V2 paper details, YOLO-RWY, and the Rüter et al. augmentation study from your slides:
+
+User accepted edits to
+
+related_work.tex
+81
+53
+
+
+Thinking completed
++
+Now let me update the discussion and conclusion to reflect the concrete outcomes, and align contributions:
+
+User accepted edits to
+
+discussion.tex
+54
+25
+
+
+User accepted edits to
+
+conclusion.tex
+34
+14
+
+
+Thinking completed
++
+Now let me update the introduction's contributions to include the vertical-angle finding and weather benchmark, and fill the abstract's headline results:
+
+User accepted edits to
+
+introduction.tex
+22
+19
+
+
+User accepted edits to
+
+abstract.tex
+5
+2
+
+
+Thinking completed
++
+Let me fix the flism→flsim typo (the slides use flsim) across the thesis:
+
+Command
+/home/ub…xtracted
+
+grep -rl 'flism' sections/ 2>/dev/null; echo "---"; sed -i 's/flism/flsim/g' sections/*.tex; grep -rn 'flism' sections/ || echo "no flism remaining"
+sections/background.tex
+---
+no flism remaining
+Adding a command to the trust list allows me to auto run this command in the future without asking for your approval every time. Manage the command trust list in the Trusted Commands setting. Which variation would you like to add?
+
+
+Full command
+grep -rl 'flism' sections/ 2>/dev/null; echo "---"; sed -i 's/flism/flsim/g' sections/*.tex; grep -rn 'flism' sections/ || echo "no flism remaining"
+
+Base
+grep *
+Thinking completed
++
+Let me enrich the background's LARD subsection with the LARD-V2 design details and source types:
+
+User accepted edits to
+
+background.tex
+12
+9
+
+
+Now let me rebuild the thesis to confirm everything compiles with the new content, tables, figures, and citations:
+
+Command
+/home/ub…xtracted
+
+pdflatex -shell-escape -interaction=nonstopmode main >/tmp/c1.log 2>&1; echo "p1:$?"; biber main >/tmp/cb.log 2>&1; echo "biber:$?"; pdflatex -shell-escape -interaction=nonstopmode main >/tmp/c2.log 2>&1; echo "p2:$?"; pdflatex -shell-escape -interaction=nonstopmode main >/tmp/c3.log 2>&1; echo "p3:$?"; grep "Output written" /tmp/c3.log
+p1:0
+biber:0
+p2:0
+p3:0
+Output written on main.pdf (37 pages, 369430 bytes).
+Adding a command to the trust list allows me to auto run this command in the future without asking for your approval every time. Manage the command trust list in the Trusted Commands setting. Which variation would you like to add?
+
+
+Full command
+pdflatex -shell-escape -interaction=nonstopmode main >/tmp/c1.log 2>&1; echo "p1:$?"; biber main >/tmp/cb.log 2>&1; echo "biber:$?"; pdflatex -shell-escape -interaction=nonstopmode main >/tmp/c2.log 2>&1; echo "p2:$?"; pdflatex -shell-escape -interaction=nonstopmode main >/tmp/c3.log 2>&1; echo "p3:$?"; grep "Output written" /tmp/c3.log
+
+Base
+pdflatex *
+Command
+/home/ub…xtracted
+
+grep -iE "undefined|Citation.*undefined|multiply defined|LaTeX Error" /tmp/c3.log | grep -vi hyperref; echo "=== biber ==="; grep -iE "WARN|ERROR" /tmp/cb.log | head; echo "done"
+=== biber ===
+done
+Adding a command to the trust list allows me to auto run this command in the future without asking for your approval every time. Manage the command trust list in the Trusted Commands setting. Which variation would you like to add?
+
+
+Full command
+grep -iE "undefined|Citation.*undefined|multiply defined|LaTeX Error" /tmp/c3.log | grep -vi hyperref; echo "=== biber ==="; grep -iE "WARN|ERROR" /tmp/cb.log | head; echo "done"
+
+Base
+grep *
+Thinking completed
++
+Clean build: 37 pages, no undefined references or citation warnings. Let me clean up the build artifacts:
+
+Command
+/home/ub…xtracted
+
+rm -f *.aux *.bcf *.blg *.lof *.lot *.lol *.out *.run.xml *.toc *.xmpdata main.bbl main.log pdfa.xmpi 2>/dev/null; rm -rf _minted-main 2>/dev/null; echo cleaned
+cleaned
+I've integrated the presentation's concrete findings and plots into the thesis, drawn additional conclusions, and aligned the vocabulary with your proposal. It compiles cleanly (37 pages, no undefined references or citation warnings).
+
+Where each slide's content landed
+Setup (setup.tex) — replaced the approximate numbers with the real ones from slides 3–4: 66,565-image pool, grouping to 7,715/source (38,575 total), 5000-image training budget, real test set 1880 (1557 nominal + 323 edge cases). Added a dedicated Test-Set Filtering for Comparability subsection defining the runway-size and vertical-angle ([0°,90°]) criteria (slide 21), the unlabeled YouTube data + custom test set (slide 36), and the two-source sampling-variance explanation (slides 40, 50).
+
+Sim2Real gap (exp_sim2real_gap.tex) — rebuilt as the presentation's actual narrative:
+
+Cross-source matrix, size-only filtered, with the real numbers from slide 19 → real looks best, contradicting the gap.
+Vertical-angle resolution with the slide 22 matrix → diagonal now dominates, gap emerges but modest.
+Distance analysis with the −2.87 → −3.37 cross-over shift (slides 20, 23).
+Image-quality causes: separability, instance confusion, edge sharpness, the near-perspective threshold-marking error (slides 24–27).
+Weather-stratified table from slide 29 (fog hardest, satellite vs flsim per scenario, combined best) and the UMAP style-feature analysis (slides 32–33).
+Weather augmentation (exp_weather_augmentation.tex) — the variance problem and fixed-dataset + max-over-runs protocol (slides 38–40, 50–51), ratios 0.15–0.75, and the three RQ answers with the refraction +10 mAP (0.75) and glare −10 mAP (0.45→0.75) effects (slides 52–55), plus the Rüter et al. 10⁹-config point (slide 35).
+
+Self-training (exp_pseudo_labels.tex) — the 4-iteration loop (slide 57), LARD results (>10 mAP on adverse splits, slide 58), custom-set results (up to +35 mAP glare, slide 59), the rain pseudo-label composition subtlety (+7 mAP from iteration-0 labels, slide 60), and the ongoing OSTracker temporal extension (slides 61–62).
+
+Style transfer (exp_style_transfer.tex) — reframed with the control-branch / control-modalities description and Cosmos Transfer, marked planned/ongoing (slides 16–17).
+
+Related work — added the LARD-V2 paper details (ODD, e-mAP, 11 YOLOv11 leave-one-out models, FULL best, satellite-vs-3D, GES best individual), YOLO-RWY (weather module, announced GANs + keypoints), and Rüter et al. New bib entries: ruter2025augmentations, ostrack2022.
+
+Additional conclusions drawn
+The discussion and conclusion now argue: the gap is real but modest and partly an image-quality effect; diversity beats viewpoint coverage; self-training is the strongest technique so far while augmentation is weak; fog is the hardest scenario; and cross-domain evaluation must control for size and orientation.
+
+Notes
+The plots are marked with clearly-labelled figure placeholder boxes (\plotslot{...}) describing exactly which slide figure to drop in — I can't embed the slide images themselves, so you'll paste the PNGs and swap the placeholder for \includegraphics.
+Result tables carry the real numbers where the slides gave them; a few cells (augmentation baselines, the final cross-technique summary, style-transfer row) remain \tbd/\todo since those runs aren't consolidated yet.
+I left the tracker and style-transfer stages explicitly "ongoing," as you asked.
+One correctness flag: slides 19/22 title the metric "ap50_90" while later slides and the axis labels use "ap50_95"/mAP50:95. I standardized everything to mAP@[.50:.95] per your metrics instruction — worth confirming the two early heatmaps were indeed 50:95 and not a genuinely different metric before you finalize.
+
+Est. Credits Used: 48.12
+Elapsed time: 24m 3s

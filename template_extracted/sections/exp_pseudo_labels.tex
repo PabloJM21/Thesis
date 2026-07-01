@@ -1,0 +1,137 @@
+\section{Self-Training with Pseudo-Labels}
+\label{sec:pseudo-labels}
+
+This section addresses \textbf{RQ3}: it tackles the Sim2Real gap directly through
+\ac{UDA} by self-training on \emph{unlabeled real} landing sequences. A
+confidence-filtered self-training loop is developed and evaluated first; a
+tracker-augmented extension that exploits temporal consistency is then introduced and
+is \emph{ongoing}.
+
+\subsection{Unlabeled Real Data}
+\label{subsec:pl-data}
+The target-domain data are the unlabeled real landing sequences described in
+\Cref{subsec:setup-data}: public YouTube footage from airports and channels
+\emph{disjoint} from the LARD-V1 test set, spanning the nominal, glare, rain and fog
+scenarios and decomposed into approximately 1800 frames. A subset forms the custom
+landing-sequence test set (glare, fog, rain) used alongside the LARD-V1 evaluation.
+Keeping the sources disjoint from the test set avoids leakage and tests genuine
+generalization.
+
+\subsection{Confidence-Filtered Self-Training Loop}
+\label{subsec:pl-selftraining}
+The loop (\Cref{fig:pl-loop}) runs for \textbf{4 iterations}; each iteration
+fine-tunes a fresh YOLOv8-pose model for 200 epochs.
+\begin{enumerate}
+    \item \textbf{Iteration 0} trains on the synthetic \texttt{combined} dataset only
+    (equal numbers of images from the five sources).
+    \item The trained model predicts runway pose on the unlabeled real frames, each
+    prediction carrying a confidence score.
+    \item Predictions with confidence below a threshold $\tau$ are discarded; the
+    retained $m$ (image, pseudo-label) pairs are moved into the training set and an
+    equal number of synthetic images is removed, keeping the training size fixed at
+    5000 ($5000-m$ synthetic $+\,m$ pseudo-labeled).
+    \item The model is retrained on the updated set and the process repeats.
+\end{enumerate}
+Two thresholds are compared, \textbf{$\tau=0.65$} and \textbf{$\tau=0.8$}, trading
+pseudo-label \emph{quantity} against \emph{quality}.
+
+\begin{figure}[th]
+    \centering
+    \plotslot{Self-training loop: LARD-V2 synthetic pool $\to$ train-set (5k) $\to$
+    YOLOv8-pose $\to$ predictions+confidence on unlabeled YouTube frames $\to$
+    confidence$>\tau$ filter $\to$ pseudo-labeled data back into train-set; evaluated
+    on the LARD test set and the custom landing-sequence test set.}
+    \caption{Confidence-filtered self-training pipeline (4 iterations, thresholds
+    $\tau\in\{0.65,0.8\}$).}
+    \label{fig:pl-loop}
+\end{figure}
+
+\subsection{Results on the LARD-V1 Test Set}
+\label{subsec:pl-lard}
+The two thresholds yield similar results on the LARD test set. On the nominal split
+the gain over the iteration-0 baseline is small, but on the adverse splits
+self-training improves mAP@[.50:.95] by more than \textbf{10 points}, with most of the
+improvement realized already at the first iteration (\Cref{fig:pl-lard}). Self-training
+on unlabeled real data thus transfers real-domain appearance far more effectively than
+weather augmentation did in \Cref{sec:weather-aug}.
+
+\begin{figure}[th]
+    \centering
+    \plotslot{mAP@[.50:.95] by iteration (0--3) for the LARD test set, per scenario
+    (nominal, fog, rain, glare, night), thresholds $0.65$ vs.\ $0.8$.}
+    \caption{Self-training on the LARD test set: large gains on adverse splits,
+    marginal on nominal; thresholds behave similarly.}
+    \label{fig:pl-lard}
+\end{figure}
+
+\subsection{Results on the Custom Landing-Sequence Test Set}
+\label{subsec:pl-custom}
+On the custom landing-sequence test set the gains are considerably larger, and the
+threshold matters more --- particularly for \emph{fog}. Overall the baseline is
+exceeded far more than on the LARD test set, by up to \textbf{35 mAP points} on the
+glare split (\Cref{fig:pl-custom}). This is expected: the custom sequences come from
+the same distribution as the pseudo-labels, so self-training adapts to them most
+strongly.
+
+\begin{figure}[th]
+    \centering
+    \plotslot{mAP@[.50:.95] by iteration for the custom test set (fog, rain, glare),
+    thresholds $0.65$ vs.\ $0.8$; up to $+35$ mAP on glare.}
+    \caption{Self-training on the custom landing-sequence test set: larger gains and
+    stronger threshold dependence than on LARD.}
+    \label{fig:pl-custom}
+\end{figure}
+
+\subsection{Pseudo-Label Composition}
+\label{subsec:pl-composition}
+Analyzing which pseudo-labels enter the training set (at $\tau=0.8$) reveals a
+subtlety of self-training. The \emph{rain} pseudo-labels are strongly represented at
+iterations~1 and~2 (both in training-set proportion and acceptance ratio), yet the
+best rain-split performance is a modest $+7$ mAP reached already by the
+iteration-1 model. In other words, the iteration-0 predictions provided the most
+\emph{useful} rain pseudo-labels, even though later iterations accumulate many more of
+them --- a reminder that pseudo-label \emph{quantity} does not equal quality and that
+self-training is exposed to confirmation bias.
+
+\plotslot{Per-scenario pseudo-label train-set proportion and acceptance ratio by
+iteration ($\tau=0.8$): rain dominates iterations 1--2.}
+
+\subsection{Tracker-Augmented Temporal Pseudo-Labels (Ongoing)}
+\label{subsec:pl-tracker}
+So far the pseudo-labels use the per-frame YOLOv8-pose predictions without any
+additional filtering. Because the data are \emph{video} landing sequences, combining
+the detector with an object tracker can exploit \emph{temporal consistency}: a
+high-confidence detection can be propagated \emph{forward and backward} through the
+sequence to recover the runway in frames where the detector alone is uncertain (e.g.\
+distant or transiently degraded). This can be interpreted as distilling a pre-trained
+tracker into temporally consistent 4-corner pseudo-labels. A first qualitative
+comparison of YOLOv8-pose against YOLOv8-pose~+~OSTracker~\cite{ostrack2022} shows the
+tracker recovering runways that the single-frame detector misses
+(\Cref{fig:pl-tracker}).
+
+\begin{figure}[th]
+    \centering
+    \plotslot{Qualitative comparison: YOLOv8-pose vs.\ YOLOv8-pose~+~OSTracker on
+    landing-sequence frames; the tracker recovers the runway in low-visibility
+    frames.}
+    \caption{Tracker-augmented pseudo-labeling (ongoing): temporal propagation
+    recovers detections missed per-frame.}
+    \label{fig:pl-tracker}
+\end{figure}
+
+This extension is \emph{in progress}. The plan is to regenerate the pseudo-labels with
+tracker-based temporal consistency and repeat the self-training loop for both
+thresholds, comparing against the confidence-only variant above.
+\todo[inline]{Once complete: report tracker-augmented self-training results per
+scenario for both thresholds, and quantify the benefit of temporal consistency,
+especially for distant runways.}
+
+\subsection{Discussion}
+\label{subsec:pl-discussion}
+Self-training uses real data directly and therefore attacks the domain shift more
+effectively than augmentation, delivering double-digit mAP gains on the adverse
+splits and up to $+35$ mAP on in-distribution landing sequences, at the cost of
+sensitivity to pseudo-label noise (as the rain-composition analysis shows). The
+threshold choice is nearly neutral on LARD but matters on the custom set. The
+tracker-augmented variant is expected to improve pseudo-label completeness in exactly
+the hard, distant-runway regime identified in \Cref{subsec:gap-distance,subsec:gap-quality}.

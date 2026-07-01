@@ -1,0 +1,125 @@
+\section{Weather Augmentations}
+\label{sec:weather-aug}
+
+This section addresses \textbf{RQ2}: whether input-space weather augmentations improve
+real-world generalization, which mixing ratios help or harm, and whether augmentation
+can compensate for a lack of synthetic diversity. It is the least direct intervention
+on the domain shift --- it approximates target-domain nuisances without using any real
+data.
+
+\subsection{Augmentations and Training Sources}
+\label{subsec:aug-design}
+Weather augmentations are drawn from the \texttt{albumentations} library and applied
+\emph{individually} to synthesize the adverse conditions of the real test set:
+\textbf{glare} (RandomSunFlare), \textbf{fog} (RandomFog), \textbf{rain}
+(RandomRain), \textbf{water refraction} (WaterRefraction) and \textbf{night}
+(a darkening transform). A qualitative comparison of these augmentations against real
+glare/fog/rain images confirms that they approximate, but do not perfectly reproduce,
+the real degradations.
+
+Following \Cref{sec:gap}, augmentations are applied to the two most relevant training
+sources: \texttt{ges} (best individual source on the real set) and \texttt{combined}
+(best overall). Evaluation is per weather scenario on the LARD test set. This pairing
+makes it possible to test whether augmentation benefits depend on the underlying
+dataset diversity.
+
+\subsection{Controlling Sampling Variance}
+\label{subsec:aug-variance}
+A first sweep exposed a methodological problem: the run-to-run mAP variance was so
+large that it masked any augmentation effect. For the \texttt{combined} source, an
+augmentation sweep on the rain split showed \emph{no} improvement over the
+no-augmentation baseline and a wide spread across the four runs; for \texttt{ges}, the
+$0\%$-ratio runs had no spread at all (the training set is fixed), confirming that the
+variance originates from two independent sampling steps: (i) re-sampling the
+\texttt{combined} training set and (ii) sampling which images are augmented.
+
+To attribute variance to the augmentation alone, the protocol is tightened
+(\Cref{subsec:setup-protocol}):
+\begin{itemize}
+    \item the \texttt{combined} training set is \emph{fixed} by sampling it four times
+    and keeping the highest-performing draw;
+    \item for each augmentation ratio, four independent runs are performed and the
+    \emph{maximum} achieved mAP is reported, i.e.\ an estimate of the best attainable
+    performance at that ratio.
+\end{itemize}
+The ratios evaluated are \textbf{0.15, 0.30, 0.45, 0.60, 0.75}. This choice reflects
+the combinatorial blow-up of a full grid: as noted in the augmentation-influence
+literature~\cite{ruter2025augmentations}, sweeping augmentations, ratios and sources
+jointly yields on the order of $10^9$ configurations, so the search is deliberately
+scoped and, as a bridge to the later methods, the data/augmentation mix is tuned
+rather than exhaustively searched.
+
+\subsection{Results}
+\label{subsec:aug-results}
+\Cref{tab:aug-bestworst} summarizes, per scenario, the fixed baselines for
+\texttt{ges} and \texttt{combined} together with the best- and worst-performing
+augmentation$\times$ratio found. The analysis answers the three sub-questions of RQ2.
+
+\paragraph{Do augmentations behave as expected?}
+Not straightforwardly. The augmentation that matches a scenario is \emph{not}
+generally the best augmentation for that scenario --- e.g.\ on the glare split the best
+result for \texttt{ges} comes from water refraction, not glare, and on several splits
+the scenario-matched augmentation is among the \emph{worst}. Weather robustness thus
+does not decompose cleanly into ``augment with the target weather''.
+
+\paragraph{Which ratio helps and which harms?}
+The effect is strongly ratio-dependent and non-monotonic. Two representative cases on
+\texttt{ges}: under water \emph{refraction} on the rain split, raising the ratio from
+$0.60$ to $0.75$ improves mAP by almost $10$ points; conversely, \emph{glare}
+augmentation on the fog split yields both the best and the worst outcomes, dropping by
+more than $10$ mAP points when the ratio is raised from $0.45$ to $0.75$. There is no
+single universally safe ratio; overly high ratios tend to over-corrupt the source.
+
+\paragraph{Do augmentations compensate for missing diversity?}
+Only weakly. For the low-diversity \texttt{ges} source, the best augmentation can
+improve a scenario substantially, but it does \emph{not} reach the performance of the
+\texttt{combined} baseline. And when the diversity is already high
+(\texttt{combined}), augmentation helps only very little --- the \texttt{combined}
+baseline is consistently at or above the best single augmentation applied to it.
+Appearance augmentation therefore does not substitute for rendering-source diversity;
+at best it narrows the gap for a single-source model.
+
+\begin{table}[th]
+    \caption{Weather augmentation on \texttt{ges} and \texttt{combined}, per scenario:
+    fixed baseline and best/worst augmentation$\times$ratio (max over 4 runs, reduced
+    20-epoch budget). The scenario-matched augmentation is rarely the best, and the
+    \texttt{combined} baseline is hard to beat.}
+    \label{tab:aug-bestworst}
+    \centering
+    \begin{NiceTabular}{llll}
+        \CodeBefore
+        \rowcolors{2}{gray!10}{white}
+        \Body
+        \toprule
+        \textbf{Scenario} & \textbf{Source} & \textbf{Baseline} & \textbf{Best / Worst augmentation (ratio)} \\
+        \midrule
+        Glare & ges      & \tbd & refraction 15\% / glare 75\% \\
+        Glare & combined & \tbd & refraction 30\% / glare 75\% \\
+        Rain  & ges      & \tbd & dark 60\% / glare 75\% \\
+        Rain  & combined & \tbd & fog 15\% / fog 60\% \\
+        Fog   & ges      & \tbd & glare 45\% / rain 75\% \\
+        Fog   & combined & \tbd & dark 15\% / fog 75\% \\
+        Night & ges      & \tbd & rain 30\% / glare 75\% \\
+        Night & combined & \tbd & dark 30\% / glare 45\% \\
+        \bottomrule
+    \end{NiceTabular}
+\end{table}
+\todo[inline]{Fill baseline mAP values from the fixed-dataset runs and, if desired,
+the best/worst mAP alongside each configuration.}
+
+\plotslot{GES/combined baseline with best and worst augmentation per scenario
+(min--max bands); and the per-augmentation ratio curves for the \texttt{ges} rain and
+fog splits (refraction $+10$ mAP at $0.75$; glare drop $>10$ mAP $0.45\!\to\!0.75$).}
+
+\subsection{Discussion}
+\label{subsec:aug-discussion}
+Weather augmentation is a cheap, label-preserving baseline that requires no real data,
+but its benefit here is limited and unstable: the scenario-matched augmentation is
+often not the best, the useful ratio is condition-specific, and augmentation does not
+recover the advantage of source diversity. Part of this instability is
+methodological --- four runs are not always enough to average out the sampling
+variance, and more runs are expensive --- which itself is a finding: robust
+augmentation studies on this task need either many runs or a fixed, controlled data
+mix. These limitations motivate the data-driven techniques of
+\Cref{sec:pseudo-labels} (which uses real, unlabeled data) and \Cref{sec:style-transfer}
+(which imports real appearance generatively).

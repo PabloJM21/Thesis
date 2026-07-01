@@ -1,0 +1,177 @@
+\section{Introduction}
+\label{sec:introduction}
+
+\subsection{Motivation}
+\label{subsec:motivation}
+The final approach and landing is statistically the most accident-prone phase of
+flight. Guiding it today relies on ground infrastructure such as instrument landing
+systems and on satellite navigation, which are not available at every runway and can
+be degraded or spoofed. A forward-looking camera on the aircraft offers a low-cost,
+self-contained alternative: if the runway can be located in the image and its
+geometry recovered, the system can estimate the aircraft's relative pose and support
+alignment during approach, reducing pilot workload and enabling assisted or
+autonomous landing~\cite{ferreira2025landing}.
+
+Detecting the runway from the aircraft perspective is, however, a hard vision
+problem. The runway appears as a small, thin quadrilateral early in the approach and
+grows and shifts rapidly as the aircraft descends, so its \emph{apparent size and
+distance} vary over orders of magnitude. Its \emph{orientation and perspective}
+depend on the approach angle, glide slope and lateral offset, and the on-board
+\emph{camera viewpoint} adds further variability. On top of this geometric
+variability, \emph{weather and illumination} --- rain, sun glare, fog, snow and night
+operations --- degrade contrast and inject nuisances (streaks, halos, scattering,
+low light) precisely when reliable detection matters most. Runway-specific detectors
+such as YOLO-RWY~\cite{yolorwy2024} and lightweight tracking-based landing-guidance
+pipelines~\cite{ferreira2025landing, runwaysurveillance2026} illustrate both the
+practical interest in the task and its difficulty.
+
+Framing the task as \emph{keypoint (pose) estimation} of the four runway corners,
+rather than as plain bounding-box detection, is particularly attractive: the four
+corners directly parameterize the runway quadrilateral and can be fed into downstream
+pose-from-geometry estimators, while remaining cheap enough for real-time, on-board
+inference.
+
+The central obstacle is training data. Annotated real approach imagery that spans a
+wide range of airports, runway geometries, approach angles and, crucially, weather
+and lighting conditions is scarce: real landing footage is costly to collect and its
+per-corner annotation is laborious, so publicly available labeled datasets are
+limited. Photorealistic simulators and geospatial rendering pipelines offer a way
+out --- they synthesize large, automatically and exactly labeled datasets covering
+many locations and viewpoints~\cite{syntheticrunway2025} --- and the Landing Approach
+Runway Detection (LARD) dataset family~\cite{lard2023} exemplifies this approach. Its
+second iteration (LARD-V2) provides several independent synthetic image sources for
+the same set of runway locations.
+
+\subsection{Problem Statement}
+\label{subsec:problem}
+Models trained purely on synthetic imagery rarely reach their synthetic-domain
+performance once deployed on real images. This performance drop, commonly referred
+to as the \emph{Sim2Real gap}, is a specific instance of \emph{domain shift}:
+the statistical distribution of the training (source, synthetic) domain differs
+from that of the deployment (target, real) domain in texture, lighting, sensor
+noise, atmospheric effects and scene composition. For runway detection the gap is
+amplified by safety-critical operating conditions: the system must remain reliable
+precisely in the adverse weather and low-visibility scenarios (rain, glare, fog,
+snow, night) that are hardest to render faithfully and least represented in nominal
+synthetic data.
+
+This thesis studies the Sim2Real gap for runway keypoint detection when a
+YOLOv8-pose model is fine-tuned on nominal-condition synthetic data from LARD-V2
+and evaluated on a real, weather-annotated test set from LARD. It first
+\emph{quantifies} the gap and then investigates three complementary families of
+techniques for \emph{closing} it, ordered by how directly they intervene on the
+domain shift: input-space weather augmentation, self-training with pseudo-labels
+on unlabeled real footage, and generative style transfer that imports
+target-domain appearance onto the synthetic source.
+
+\paragraph{Goal of the thesis.}
+The goal of this thesis is to evaluate \emph{which Sim2Real strategy best improves
+lightweight runway-corner detection from aircraft-view images when only limited
+annotated real data is available}. Concretely, the strategies are compared under a
+single, reproducible, lightweight setup (a fine-tuned YOLOv8-pose model, a fixed
+5000-image training budget, and a shared weather-stratified real test set), so that
+observed differences are attributable to the adaptation strategy rather than to
+model capacity or training budget.
+
+\paragraph{Research gap.}
+Prior work tends to address these ingredients \emph{separately}: some studies focus
+on generating and mixing synthetic runway data~\cite{syntheticrunway2025}, others on
+runway-specific detector design~\cite{yolorwy2024}, weather-robust
+augmentation~\cite{weatherrobust2025}, or domain adaptation~\cite{ganin2015dann}. In
+contrast, this thesis compares several Sim2Real strategies --- weather augmentation,
+self-training, and diffusion-based style transfer --- head-to-head under one
+lightweight, reproducible protocol, which makes their relative benefits directly
+comparable.
+
+\paragraph{Label-preserving style transfer.}
+A recurring difficulty for the generative strategy is that the four runway corners
+must remain geometrically valid after an image is restyled. Unpaired image-to-image
+translation with CycleGAN-style models can hallucinate or displace structure, which
+would silently corrupt the corner labels. This thesis therefore favors a
+\emph{conditional diffusion} model that is guided by the source image's structure so
+that it repaints appearance --- lighting, texture, weather traits of the real target
+domain --- while leaving the runway geometry, and hence the labels, in place; the
+CycleGAN route is kept only as a contrast that exposes the label-displacement risk.
+
+\subsection{Research Questions}
+\label{subsec:research-questions}
+The work is organized around four research questions (RQs) that follow a single
+logical thread: measure the gap, then progressively attack it. Each RQ states a
+\emph{question}; the \emph{experiment} that answers it is developed in the
+corresponding section (\Cref{sec:gap,sec:weather-aug,sec:pseudo-labels,sec:style-transfer}),
+keeping the questions separate from the methodology.
+\begin{itemize}
+    \item \textbf{RQ1 (Gap characterization).} How large is the Sim2Real gap for
+    runway keypoint detection across the five LARD-V2 synthetic sources and a
+    combined source, and which source generalizes best to the real test set
+    overall and within each individual weather scenario? \emph{Motivation:} the size
+    and structure of the gap must be measured before any mitigation can be assessed,
+    and the choice of synthetic source is itself a design decision reported to matter
+    for runway detection~\cite{syntheticrunway2025}.
+    \item \textbf{RQ2 (Weather augmentation).} To what extent do input-space
+    weather augmentations improve real-world generalization for a single synthetic
+    source and for the combined source? Which augmentation ratios help and which
+    harm, and can augmentation compensate for a lack of dataset diversity?
+    \emph{Motivation:} augmentation is the cheapest, label-preserving robustness
+    lever and is known to shift detector performance under adverse
+    weather~\cite{weatherrobust2025}, but its ratio and its interaction with dataset
+    diversity are rarely quantified for this task.
+    \item \textbf{RQ3 (Self-training).} Can self-training with confidence-filtered
+    pseudo-labels on unlabeled real landing sequences reduce the gap, and does
+    exploiting temporal consistency through an object tracker further improve the
+    pseudo-labels? \emph{Motivation:} unlabeled real landing footage is comparatively
+    abundant, and self-training is a standard route to unsupervised domain
+    adaptation~\cite{ganin2015dann}; tracking is already used in landing-guidance
+    pipelines~\cite{ferreira2025landing, runwaysurveillance2026} and can enforce
+    temporal label consistency.
+    \item \textbf{RQ4 (Style transfer).} Can diffusion-based style transfer import
+    real-domain (and adverse-weather) appearance onto the synthetic source without
+    breaking the geometric labels, and how does it compare to a GAN-based
+    alternative that risks displacing keypoints? \emph{Motivation:} style transfer
+    attacks the appearance gap most directly, but only helps if the four-corner
+    labels survive the transformation.
+\end{itemize}
+
+\subsection{Contributions}
+\label{subsec:contributions}
+This thesis makes the following contributions:
+\begin{enumerate}
+    \item A \textbf{real-domain characterization of the Sim2Real gap} for runway
+    keypoint detection, using a shared-location cross-evaluation across five
+    synthetic rendering sources plus a combined source against the real LARD-V1 set.
+    This complements the LARD-V2 benchmark (which studied cross-dataset
+    generalization on \emph{synthetic} test sets) and isolates the rendering source
+    from the runway viewpoint.
+    \item A \textbf{vertical-angle test-set filtering} method and the finding that
+    the gap is only measurable once the test sets are matched on runway
+    \emph{orientation} as well as size; without it, the real set spuriously appears
+    easier than the synthetic sets. The residual synthetic difficulty is shown to be
+    largely an image-quality effect concentrated on distant runways.
+    \item A \textbf{weather-stratified real benchmark}, extended with private landing
+    sequences to compensate for the sparse adverse-weather representation, together
+    with a style-feature analysis explaining why different sources suit different
+    scenarios.
+    \item A systematic \textbf{study of weather augmentations} (glare, fog, rain,
+    water refraction, night) and their mixing ratios, with a variance-controlled
+    protocol, testing whether augmentation substitutes for dataset diversity.
+    \item A \textbf{self-training pipeline} on unlabeled real landing sequences that
+    compares confidence thresholds, analyzes pseudo-label composition, and extends
+    pseudo-labeling with a tracker-based temporal-consistency mechanism (ongoing).
+    \item An investigation of \textbf{control-guided diffusion style transfer}
+    (Cosmos Transfer) for label-preserving domain translation of the synthetic
+    source, with an optional CycleGAN comparison (ongoing).
+\end{enumerate}
+
+\subsection{Thesis Outline}
+\label{subsec:outline}
+\Cref{sec:background} introduces the concepts required to follow the work: vision-based
+runway detection, YOLO pose estimation, the Sim2Real gap and domain-adaptation
+families, and the LARD datasets. \Cref{sec:related-work} positions the thesis
+against related literature. \Cref{sec:setup} defines the shared experimental
+setup: datasets and weather splits, model, evaluation metrics and training
+protocol. \Cref{sec:gap} establishes and dissects the Sim2Real gap (RQ1).
+\Cref{sec:weather-aug} studies weather augmentations (RQ2). \Cref{sec:pseudo-labels}
+develops the self-training pipelines (RQ3). \Cref{sec:style-transfer} investigates
+diffusion-based style transfer (RQ4). \Cref{sec:discussion} compares the techniques
+and discusses limitations, and \Cref{sec:conclusion} concludes and outlines future
+work.

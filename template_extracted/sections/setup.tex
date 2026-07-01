@@ -1,0 +1,160 @@
+\section{Experimental Setup}
+\label{sec:setup}
+
+This section defines the elements shared by all experiments: the datasets, the
+comparability-preserving test-set filtering, the model and training protocol, and the
+evaluation metrics. Experiment-specific choices are described in the respective
+sections (\Cref{sec:gap,sec:weather-aug,sec:pseudo-labels,sec:style-transfer}).
+
+\subsection{Datasets}
+\label{subsec:setup-data}
+
+\paragraph{Synthetic training sources (LARD-V2).}
+Training uses the five synthetic sources of LARD-V2 --- \texttt{flsim} (Flight
+Simulator), \texttt{arcgis} (ArcGIS), \texttt{bingmaps} (Bing Maps), \texttt{ges}
+(Google Earth Studio) and \texttt{xplane} (X-Plane) --- generated for approximately
+\textbf{250 airports worldwide}. The full synthetic training pool comprises
+\textbf{66\,565 images}. To make the sources directly comparable, the images are
+grouped so that every runway viewpoint is represented by the same number of images in
+each source; this grouping reduces the pool to \textbf{7\,715 images per source}
+(\textbf{38\,575} in total). A key consequence of this design is that the individual
+sources share \texttt{location\_id}s: image $i$ in each source depicts the \emph{same}
+runway view rendered by a different pipeline, which turns the cross-source comparison
+of \Cref{sec:gap} into a controlled experiment in which the rendering source is the
+only variable.
+
+\paragraph{Training budget and the combined source.}
+From this pool, each training run fine-tunes on a fixed budget of \textbf{5000
+images}. The \texttt{combined} source (also referred to as \texttt{all}) mixes all
+five pipelines in equal proportion at matched locations; to respect the 5000-image
+budget it therefore covers roughly \emph{one fifth} as many distinct locations as an
+individual source (each location contributing five renderings instead of one). This
+sets up an explicit trade-off between \emph{rendering-source diversity} and
+\emph{runway-viewpoint coverage} that recurs throughout the thesis. An extended
+variant that relaxes the budget, \texttt{all\_extended}, is included where noted.
+
+\paragraph{Real test set (LARD-V1) and weather splits.}
+Real-world performance is evaluated on a held-out set of \textbf{1880 real images}
+from LARD-V1, composed of \textbf{1557 nominal} images and \textbf{323 edge cases}.
+The edge cases, together with the nominal split, are stratified into five
+weather/lighting scenarios: \emph{nominal}, \emph{glare}, \emph{rain}, \emph{fog} and
+\emph{night}. Because the nominal scenario accounts for almost three quarters of the
+set, the \emph{overall} real metric is nominal-dominated; per-scenario numbers are
+therefore used whenever adverse conditions are discussed. To enable a fair
+comparison against the synthetic domain, an equally sized sample is drawn from the
+synthetic sources (from images not used for training). \Cref{tab:weather-splits}
+summarizes the composition.
+
+\begin{table}[th]
+    \caption{Real test set (LARD-V1), composition and weather stratification. The
+    nominal split dominates, which is why per-scenario metrics are reported for
+    adverse conditions.}
+    \label{tab:weather-splits}
+    \centering
+    \begin{NiceTabular}{lr}
+        \CodeBefore
+        \rowcolors{2}{gray!10}{white}
+        \Body
+        \toprule
+        \textbf{Split} & \textbf{\# Images} \\
+        \midrule
+        Nominal        & 1557 \\
+        Edge cases (glare + rain + fog + night) & 323 \\
+        \midrule
+        \textbf{Total} & 1880 \\
+        \bottomrule
+    \end{NiceTabular}
+\end{table}
+
+\paragraph{Unlabeled real data and the custom test set (self-training).}
+The self-training experiments (\Cref{sec:pseudo-labels}) additionally use
+\emph{unlabeled} real landing sequences collected from public YouTube channels,
+captured at airports and channels that are \emph{disjoint} from the LARD-V1 test set.
+The sequences span the same adverse-weather scenarios as the test splits (nominal,
+glare, rain, fog) and are decomposed into approximately \textbf{1800 frames}. A
+subset of these sequences forms a \emph{custom} landing-sequence test set (with
+glare, fog and rain splits) used to complement the LARD-V1 evaluation.
+
+\subsection{Test-Set Filtering for Comparability}
+\label{subsec:setup-filtering}
+A naive comparison between the synthetic and real test sets is confounded by
+differences in the \emph{apparent runway size} and \emph{orientation} of their
+runways. This thesis therefore filters the test sets along two axes before comparing
+them:
+\begin{itemize}
+    \item \textbf{Runway size.} The apparent runway size is measured as the
+    $\log_{10}$ of the fraction of image pixels occupied by the runway, and the test
+    sets are filtered to a common size distribution.
+    \item \textbf{Vertical angle.} Runways in the synthetic test sets frequently
+    appear at oblique orientations, whereas real approaches are mostly aligned
+    vertically. The \emph{vertical angle} is defined as the absolute value of the
+    angle of the runway with respect to the image $y$-axis, taking values in
+    $[0^\circ, 90^\circ]$; it measures the runway's ``skewness'' independently of
+    direction. Matching this distribution across test sets removes an orientation
+    bias that otherwise flatters the real set.
+\end{itemize}
+The effect of adding the vertical-angle criterion on top of the size criterion is
+analyzed in \Cref{sec:gap}.
+
+\subsection{Model}
+\label{subsec:setup-model}
+All experiments fine-tune a pretrained \textbf{YOLOv8-pose} model with four keypoints
+corresponding to the runway corners. Fine-tuning from a pretrained checkpoint (rather
+than training from scratch) keeps the setup lightweight and reproducible and ensures
+that differences in results are attributable to the training data and adaptation
+technique rather than to backbone initialization. This choice is further motivated by
+the LARD-V2 benchmark, on which the YOLO family performs strongly
+(\Cref{subsec:rw-runway}).
+\todo[inline]{State the exact variant (n/s/m/l), input resolution, optimizer,
+learning-rate schedule, batch size and hardware.}
+
+\subsection{Training Protocol}
+\label{subsec:setup-protocol}
+Two training budgets are used, depending on the experiment:
+\begin{itemize}
+    \item \textbf{Full budget (default).} 200 epochs with early-stopping
+    \emph{patience} of 25 epochs. Used for the Sim2Real gap characterization
+    (\Cref{sec:gap}), self-training (\Cref{sec:pseudo-labels}) and style transfer
+    (\Cref{sec:style-transfer}).
+    \item \textbf{Reduced budget (weather-augmentation sweep).} 20 epochs, used only
+    for the weather-augmentation study (\Cref{sec:weather-aug}) to keep the large
+    augmentation$\times$ratio sweep tractable.
+\end{itemize}
+
+\paragraph{Sampling variance and repeated runs.}
+Two sources of randomness strongly affect the mAP of a single run: (i) the specific
+images sampled into the fixed 5000-image budget (especially for the \texttt{combined}
+source, which re-samples locations), and (ii) the specific images selected to receive
+an augmentation. To control for this, each configuration in \Cref{sec:weather-aug} is
+trained with \textbf{4 independent runs}. As detailed there, the \texttt{combined}
+training set is additionally \emph{fixed} (sampled four times, best retained) so that
+the reported variance is attributable to the augmentation alone.
+
+\subsection{Evaluation Metrics}
+\label{subsec:setup-metrics}
+The \textbf{primary metric} is keypoint \ac{mAP} averaged over the ten \ac{OKS}/\ac{IoU}
+thresholds from $0.50$ to $0.95$ in steps of $0.05$, denoted \textbf{mAP@[.50:.95]}
+(equivalently mAP50--95). It is the strictest single-number summary and rewards
+accurate, well-localized runway quadrilaterals rather than mere presence.
+mAP@$0.50$ is reported alongside it as a looser reference. Where a single localization
+figure is more informative --- for example the runway-size analyses of
+\Cref{sec:gap} --- the \textbf{\ac{IoU}} between the predicted and ground-truth runway
+region is reported directly. Pixel-level precision/recall of the runway corners and
+\textbf{inference speed} (throughput, frames per second on the reference hardware) are
+reported as secondary, deployment-oriented metrics, in line with the edge-deployable
+target application.
+
+All metrics are reported \emph{overall} (entire real test set) and \emph{per weather
+scenario}; because the overall figure is nominal-dominated, per-scenario numbers are
+used when reasoning about adverse conditions.
+
+\paragraph{What counts as a meaningful improvement.}
+Given the four-run variance-control protocol, an adaptation strategy is considered to
+\emph{meaningfully} improve over the synthetic-only baseline on a given split when its
+mean mAP@[.50:.95] gain exceeds the run-to-run spread of the baseline. As a practical
+guide, single-point gains ($\sim$1\,mAP) are treated as marginal, whereas gains of
+several mAP points on the adverse-weather splits --- where the gap is largest --- are
+treated as substantive.
+\todo[inline]{Fix the OKS keypoint scales for the 4-corner runway pose, the detection
+confidence/IoU thresholds, and the exact spread value used for the ``meaningful
+improvement'' criterion once baseline variance is measured.}
